@@ -27,14 +27,14 @@ rOffIn=0
 n=5
 forceCoefficient2=0 #0.01 #calculate interaction force
 plotStep=5 #30
-openImgVideoDirect=0
+openImgVideoDirect=1
 kBTChangeMode=1
-kBTChangeRho=65
+kBTChangeRho=20
 theta=180
 kBTChangePM0=$(expr $kBTChangeRho \* $theta / 180)
 #echo $kBTChangePM
-visionConeXLen=$(python -c "import math; print('{:.2f}'.format(math.cos(math.radians($theta))))")
-$echo $visionConeXLen  # 输出 180.0
+visionConeXLen=$(python3 -c "import math; print('{:.2f}'.format(math.cos(math.radians($theta))))")
+echo $visionConeXLen  # 输出 180.0
 
 # 检查是否传入了参数
 if [ -z "$1" ]; then
@@ -53,12 +53,12 @@ else
 fi
 
 time=$(date "+%Y%m%d-%H%M%S")
-dirName="../boxX${boxX}_boxY${boxY}_particles${totalParticles}_endTime${endTime}_kBT${kBT}_N${n}_forceCoefficient${forceCoefficient}_timeStep${timeStep}_rOff${rOff}_rOffInner${rOffIn}_Mode${kBTChangeMode}_AroundRhoMiniKBT${kBTChangeRho}_VisionConeXLen${visionConeXLen}"
+dirName="boxX${boxX}_boxY${boxY}_particles${totalParticles}_endTime${endTime}_kBT${kBT}_N${n}_forceCoefficient${forceCoefficient}_timeStep${timeStep}_rOff${rOff}_rOffInner${rOffIn}_Mode${kBTChangeMode}_AroundRhoMiniKBT${kBTChangeRho}_VisionConeXLen${visionConeXLen}"
 echo $dirName
-mkdir $dirName
-cp kernel.cu $dirName
-cp newrun.sh $dirName
-cd $dirName
+mkdir ../$dirName
+cp kernel.cu ../$dirName
+cp newrun.sh ../$dirName
+cd ../$dirName
 
 # 创建并写入 input.dat 文件
 cat > input.dat << EOF
@@ -134,12 +134,16 @@ if [[ -z "$PYTHON_CMD" ]]; then
 fi
 
 echo -e "plotStep is:  $plotStep\n"
-cd ../source && "$PYTHON_CMD" plot.py "$dirName" "$plotStep" "0"
+cd ../source && "$PYTHON_CMD" plot.py "../$dirName" "$plotStep" "0"
 #绘制粒子轨迹
 #"$PYTHON_CMD" trace.py "$dirName" 1 
 folderTimeFormat=$(date +%-m.%-d)  # 不带前导零的月份和日期
-mkdir "../$folderTimeFormat"
-cd ..
-rm "$folderTimeFormat/$dirName" -rf
-mv "$dirName*" "$folderTimeFormat"
+mkdir -p "../$folderTimeFormat"
+rm "../$folderTimeFormat/$dirName" -rf
+# echo $dirName
+# ls
+# ls ..
+mv "../$dirName" "../$folderTimeFormat"
+mv "../$dirName.mp4" "../$folderTimeFormat"
+mv "../${dirName}kBT.jpg" "../$folderTimeFormat"
 

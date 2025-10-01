@@ -573,7 +573,7 @@ __global__ void getForce (Particle PT, Parameter PM) {
     int i;
     PT.aroundNum[id] = 0;
     for (i = 0;i < PT.offsetsNL[id];i++) {
-        x0 = PT.x[id];
+        x0 = PT.x[id]<PM.boxX-0.5 ? PT.x[id]+0.5:PT.x[id]+0.5-PM.boxX;
         y0 = PT.y[id];
         x1 = PT.x[PT.NeighborList[id * PM.maxParticlePerCell + i]];
         y1 = PT.y[PT.NeighborList[id * PM.maxParticlePerCell + i]];
@@ -582,16 +582,12 @@ __global__ void getForce (Particle PT, Parameter PM) {
         dy = sign01(0.5 * PM.boxY - y0 + y1) * sign01(0.5 * PM.boxY + y0 - y1) * (y0 - y1) + \
             sign01(sign(y0 - y1) * (y0 - y1) - 0.5 * PM.boxY) * -sign(y0 - y1) * (PM.boxY - sign(y0 - y1) * (y0 - y1));
         dr = sqrt(dx * dx + dy * dy);
+        
         if(dr<PM.rOff && dx>(dr*PM.visionConeXLen) && dr>PM.rOffIn){
             PT.aroundNum[id] += 1;
         }
-        //if(dr<PM.rd){
-        //    //f12 = 24/pow(dr,6);
-        //    f12 = force(PM.forceCoefficient,dr,PM.rd);
-        //    PT.fx[id] += f12 * dx;
-        //    PT.fy[id] += f12 * dy;
-        //}else f12 = 0;
-        f12=0;
+
+       f12=0;
         
         if (PT.fx[id] > 10000 || PT.fx[id] < -10000 || PT.fy[id] > 10000 || PT.fy[id] < -10000) {
             break;
@@ -618,7 +614,7 @@ __device__ void updateKBT(Particle PT, Parameter PM, int id){
         PT.kBT[id]=PM.kBT+PM.N*sign(PT.aroundNum[id]-PM.kBTChangePM0)*(PT.aroundNum[id]-PM.kBTChangePM0);
     } else if (PM.kBTChangeMode == 3){
         PT.kBT[id]=PM.kBT+PM.N*(sin((PT.aroundNum[id]-PM.kBTChangePM0)*Pi/3-Pi/2)+1);
-    }
+    } 
 }
 
 __global__ void updatePosition(Particle PT, Parameter PM) {
