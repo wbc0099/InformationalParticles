@@ -573,7 +573,9 @@ __global__ void getForce (Particle PT, Parameter PM) {
     int i;
     PT.aroundNum[id] = 0;
     for (i = 0;i < PT.offsetsNL[id];i++) {
-        x0 = PT.x[id]<PM.boxX-0.5 ? PT.x[id]+0.5:PT.x[id]+0.5-PM.boxX;
+        real disp=0.5;
+        //x0 = PT.x[id]<PM.boxX-disp ? PT.x[id]+disp:PT.x[id]+disp-PM.boxX;
+        x0 = PT.x[id];
         y0 = PT.y[id];
         x1 = PT.x[PT.NeighborList[id * PM.maxParticlePerCell + i]];
         y1 = PT.y[PT.NeighborList[id * PM.maxParticlePerCell + i]];
@@ -583,7 +585,18 @@ __global__ void getForce (Particle PT, Parameter PM) {
             sign01(sign(y0 - y1) * (y0 - y1) - 0.5 * PM.boxY) * -sign(y0 - y1) * (PM.boxY - sign(y0 - y1) * (y0 - y1));
         dr = sqrt(dx * dx + dy * dy);
         
-        if(dr<PM.rOff && dx>(dr*PM.visionConeXLen) && dr>PM.rOffIn){
+        real x01 = PT.x[id]<PM.boxX-disp ? PT.x[id]+disp:PT.x[id]+disp-PM.boxX;
+        real x02 = PT.x[id]<PM.boxX-2*disp ? PT.x[id]+2*disp:PT.x[id]+2*disp-PM.boxX;
+        real dx1 = sign01(0.5 * PM.boxX - x01 + x1) * sign01(0.5 * PM.boxX + x01 - x1) * (x01 - x1) + \
+            sign01(sign(x01 - x1) * (x01 - x1) - 0.5 * PM.boxX) * -sign(x01 - x1) * (PM.boxX - sign(x01 - x1) * (x01 - x1));
+        real dx2 = sign01(0.5 * PM.boxX - x02 + x1) * sign01(0.5 * PM.boxX + x02 - x1) * (x02 - x1) + \
+            sign01(sign(x02 - x1) * (x02 - x1) - 0.5 * PM.boxX) * -sign(x02 - x1) * (PM.boxX - sign(x02 - x1) * (x02 - x1));
+        real dr1 = sqrt(dx1 * dx1 + dy * dy);
+        real dr2 = sqrt(dx2 * dx2 + dy * dy);
+        
+        //if(dr<PM.rOff && dx>(dr*PM.visionConeXLen) && dr>PM.rOffIn){
+        //if(dx>-4 && dx<4 && dy>-0.5 && dy<0.5){
+        if(dr<1 || (dr1<2 && dr2>1 && dy>0)){
             PT.aroundNum[id] += 1;
         }
 

@@ -4,10 +4,12 @@
 # 定义每个变量的值，可以根据需要进行修改
 boxX=40
 boxY=$boxX
-cellListCountX=10
-cellListCountY=$cellListCountX
-cellListSizeX=4
-cellListSizeY=$cellListSizeX
+cellListCountX=8
+cellListCountY=8
+# cellListCountY=$cellListCountX
+cellListSizeX=5
+cellListSizeY=5
+# cellListSizeY=$cellListSizeX
 maxParticlesPerCell=2000
 rForce=0
 rNeighborList=2.5 #automatic
@@ -27,9 +29,9 @@ rOffIn=0
 n=5
 forceCoefficient2=0 #0.01 #calculate interaction force
 plotStep=5 #30
-openImgVideoDirect=1
+openImgVideoDirect=0
 kBTChangeMode=1
-kBTChangeRho=20
+kBTChangeRho=120
 theta=180
 kBTChangePM0=$(expr $kBTChangeRho \* $theta / 180)
 #echo $kBTChangePM
