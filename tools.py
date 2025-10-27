@@ -197,6 +197,7 @@ def readAllDatas(path,includeString,startstr,endstr,readStep=1):
         i+=1
     data_=np.array(data_)
     print(data_.shape)
+    return(data_)
             
 
 if __name__ == "__main__":

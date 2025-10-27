@@ -9,7 +9,7 @@ if __name__=="__main__":
     else: 
         N=0
     item_names=os.listdir(current_folder)
-    data=readFile(path)
+    data=(path)
     data=data[N,:]
     with open(path+"/input.dat") as f:
         lines=f.readlines()

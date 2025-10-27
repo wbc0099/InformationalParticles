@@ -622,9 +622,8 @@ __global__ void getForce (Particle PT, Parameter PM) {
         // real dr1 = sqrt(dx1 * dx1 + dy * dy);
         // real dr2 = sqrt(dx2 * dx2 + dy * dy);
         
-        if(dr<PM.rOff && dx>(dr*PM.visionConeXLen) && dr>PM.rOffIn){
-        // if((dx>-0.5 && dx<1.5 && dy>-0.5 && dy<0.5) || (dx>0.5 && dx<2.5 && dy>-1.5 && dy<-0.5)){
-        // if(dx>-0.5 && dx<1.5 && dy>-1.5 && dy<0.5){
+        //if(dr<PM.rOff && dx>(dr*PM.visionConeXLen) && dr>PM.rOffIn){
+        if(dx>-2 && dx<2 && dy>-0.5 && dy<0.5){
         //if(dr<1 || (dr1<2 && dr2>1 && dy>0)){
         // if(dr>2 && dr<3){
         // if((dx>-2 && dx<2 && dy>-0.5 && dy<0.5) || (dx>-0.5 && dx<0.5 && dy>-2 && dy<2)){
