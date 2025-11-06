@@ -4,34 +4,34 @@
 # 定义每个变量的值，可以根据需要进行修改
 boxX=20
 boxY=$boxX
-cellListCountX=4
-cellListCountY=4
+cellListCountX=5
+cellListCountY=5
 # cellListCountY=$cellListCountX
-cellListSizeX=5
-cellListSizeY=5
+cellListSizeX=4
+cellListSizeY=4
 # cellListSizeY=$cellListSizeX
-maxParticlesPerCell=2000
+maxParticlesPerCell=6000
 rForce=0
 # remember this numbe can never be greather than cellSize
-rNeighborList=4 #automatic
+rNeighborList=3 #automatic
 minDistance=0.1 # no use
-equilibriumDistance=0.1 
+equilibriumDistance=0.01 
 forceCoefficient=1 #epsilon
 kBT=0.0000
 viscosityCoefficient=1
 neighborUpdateThreshold=0.1
-totalParticles=12000
+totalParticles=30000
 startTime=0
-endTime=0.050
+endTime=5.00
 timeStep=0.00005
-tExpo=0.00050
+tExpo=0.0500
 rOff=1.0
 rOffIn=0
 n=5
 forceCoefficient2=0 #0.01 #calculate interaction force
-plotStep=5 #30
+plotStep=1 #30
 openImgVideoDirect=0
-kBTChangeMode=1
+kBTChangeMode=5
 kBTChangeRho=150
 theta=180
 kBTChangePM0=$(expr $kBTChangeRho \* $theta / 180)
@@ -63,7 +63,7 @@ dirName="boxX${boxX}_boxY${boxY}_particles${totalParticles}_endTime${endTime}_kB
 # dirName="concentricCircles1and23"
 # dirName="doubleCirlcle"
 # dirName="ring23"
-# dirName="recttangle0ljl"
+# dirName="recttanglehlll"
 echo $dirName
 mkdir ../$dirName
 cp kernel.cu ../$dirName

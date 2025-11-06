@@ -11,7 +11,8 @@ def extract_parameters(filename):
     从文件名中提取AroundNumMiniKBT和VisionConeXLen参数值
     """
     # 使用正则表达式匹配参数值
-    around_match = re.search(r'AroundRhoMiniKBT(-?[\d.]+)', filename)
+    # around_match = re.search(r'AroundRhoMiniKBT(-?[\d.]+)', filename)
+    around_match = re.search(r'particles(-?[\d.]+)', filename)
     vision_match = re.search(r'VisionConeXLen(-?[\d.]+)', filename)
     
     if around_match and vision_match:
