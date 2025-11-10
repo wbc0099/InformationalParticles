@@ -831,7 +831,7 @@ __device__ void updateKBT(Particle PT, Parameter PM, int id)
     }
     else if (PM.kBTChangeMode == 6)
     {
-        PT.kBT[id] = sin(PT.aroundNum[id] * Pi / 150 + Pi / 2) + 1;
+        PT.kBT[id] = sin(PT.aroundNum[id] * Pi / 75 + Pi / 2) + 1;
     }
 }
 
