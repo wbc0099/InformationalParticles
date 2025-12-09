@@ -69,14 +69,16 @@ def main():
         if colorMax > kMax:
             kMax = colorMax
 
+    xOffset=-7
+    yOffset=-15
     for item in item_names1:
         if i % plotStep == 0:
             x_, y_, color_ = [], [], []
             with open(os.path.join(path, item)) as f:
                 for line in f:
                     data = line.split()
-                    x_.append(float(data[0]))
-                    y_.append(float(data[1]))
+                    x_.append((float(data[0])+xOffset+xlim) % xlim)
+                    y_.append((float(data[1])+yOffset+ylim) % ylim)
                     color_.append(float(data[2]))
             scatter = plt.scatter(x_, y_, s=0.2, c=color_, cmap="jet", vmin=kMin, vmax=kMax)
             plt.colorbar(scatter)
@@ -111,7 +113,7 @@ def main():
     clip.write_videofile(video_name, codec='libx264')  # 使用libx264编解码器
 
     # 可选地删除图片目录，如果不需要图片了
-    shutil.rmtree(picture_dir)
+    # shutil.rmtree(picture_dir)
 
     if openImgVideoDirect:
         os.system("eog "+ distinationFinalPic)

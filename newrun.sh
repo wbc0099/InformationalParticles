@@ -2,37 +2,36 @@
 #!/bin/bash
 
 # 定义每个变量的值，可以根据需要进行修改
-boxX=20
+boxX=1
 boxY=$boxX
-cellListCountX=5
-cellListCountY=5
+cellListCountX=4
+cellListCountY=4
 # cellListCountY=$cellListCountX
-cellListSizeX=4
-cellListSizeY=4
+cellListSizeX=0.25
+cellListSizeY=0.25
 # cellListSizeY=$cellListSizeX
-maxParticlesPerCell=6000
+maxParticlesPerCell=4000
 rForce=0
-# remember this numbe can never be greather than cellSize
-rNeighborList=3 #automatic
-minDistance=0.1 # no use
-equilibriumDistance=0.01 
+rNeighborList=0.15 #automatic
+minDistance=0.0 # no use
+equilibriumDistance=0.0 
 forceCoefficient=1 #epsilon
-kBT=0.0000
+kBT=1.0000
 viscosityCoefficient=1
-neighborUpdateThreshold=0.1
-totalParticles=30000
+neighborUpdateThreshold=0.05
+totalParticles=15000
 startTime=0
-endTime=50.00
-timeStep=0.00005
-tExpo=0.500
-rOff=1.0
+endTime=0.0050
+timeStep=0.0000001
+tExpo=0.000020
+rOff=0.05
 rOffIn=0
 n=5
 forceCoefficient2=0 #0.01 #calculate interaction force
 plotStep=1 #30
 openImgVideoDirect=0
-kBTChangeMode=6
-kBTChangeRho=150
+kBTChangeMode=1
+kBTChangeRho=100
 theta=180
 kBTChangePM0=$(expr $kBTChangeRho \* $theta / 180)
 #echo $kBTChangePM
@@ -63,7 +62,8 @@ dirName="boxX${boxX}_boxY${boxY}_particles${totalParticles}_endTime${endTime}_kB
 # dirName="concentricCircles1and23"
 # dirName="doubleCirlcle"
 # dirName="ring23"
-# dirName="recttanglehlll"
+# dirName="recttangle4130"
+# dirName="test1600N15000"
 echo $dirName
 mkdir ../$dirName
 cp kernel.cu ../$dirName
@@ -144,15 +144,15 @@ if [[ -z "$PYTHON_CMD" ]]; then
 fi
 
 echo -e "plotStep is:  $plotStep\n"
-cd ../source && "$PYTHON_CMD" plot.py "../$dirName" "$plotStep" "0"
+cd ../source && "$PYTHON_CMD" plot.py "../$dirName" "$plotStep" "0" &&\
 #绘制粒子轨迹
 #"$PYTHON_CMD" trace.py "$dirName" 1 
-folderTimeFormat=$(date +%-m.%-d)  # 不带前导零的月份和日期
-mkdir -p "../$folderTimeFormat"
-rm "../$folderTimeFormat/$dirName" -rf
+folderTimeFormat=$(date +%-m.%-d)  &&\ 
+mkdir -p "../$folderTimeFormat" &&\
+rm "../$folderTimeFormat/$dirName" -rf  &&\
 # echo $dirName
 # ls
 # ls ..
-mv "../$dirName" "../$folderTimeFormat"
-mv "../$dirName.mp4" "../$folderTimeFormat"
+mv "../$dirName" "../$folderTimeFormat" &&\
+mv "../$dirName.mp4" "../$folderTimeFormat" &&\
 mv "../${dirName}kBT.jpg" "../$folderTimeFormat"

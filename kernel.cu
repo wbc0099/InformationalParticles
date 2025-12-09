@@ -98,8 +98,8 @@ void InitOffset();
 void HostUpdataToDevice();
 void DeviceUpdataToHost();
 void listUpdate(Particle PT, Parameter PM);
-void forceAndPositionUpdate(Particle PT, Parameter PM);
-void iterate(Particle PT, Parameter PM);
+void forceAndPositionUpdate(Particle PT, Parameter PM, real tNow);
+void iterate(Particle PT, Parameter PM, real tNow);
 void initBlockAndThreadNum();
 void showProgress(real tNow, real tStart, real tStop, clock_t clockNow, clock_t clockStart);
 int setDevice(int n);
@@ -110,7 +110,7 @@ __global__ void getCellList(Particle PT, Parameter PM);
 __global__ void getAroundCellParticleId(Particle PT, Parameter PM);
 __global__ void saveXY0ToUpdateHybridList(Particle PT, Parameter PM);
 __global__ void checkUpdate(Particle PT, Parameter PM);
-__global__ void getForce(Particle PT, Parameter PM);
+__global__ void getForce(Particle PT, Parameter PM, real tNow);
 __global__ void updatePosition(Particle PT, Parameter PM);
 __device__ int getNeighborListTry(real x0, real y0, real x1, real y1, Parameter PM);
 __device__ int sign(real x);
@@ -135,7 +135,7 @@ int main()
     clock_t clockStart = clock();
     for (tNow = PM.tStart; tNow < PM.tStop; tNow += PM.tStep)
     {
-        iterate(PT, PM);
+        iterate(PT, PM, tNow);
 
         cudaMemcpyFromSymbol(&wrongFlagHost, wrongFlag, sizeof(int));
         if (wrongFlagHost == 1)
@@ -669,9 +669,9 @@ int printGpuError()
     return 1;
 }
 
-void iterate(Particle PT, Parameter PM)
+void iterate(Particle PT, Parameter PM, real tNow)
 {
-    forceAndPositionUpdate(PT, PM);
+    forceAndPositionUpdate(PT, PM, tNow);
     checkUpdate<<<PM.blockNum, PM.threadNum>>>(PT, PM);
     cudaMemcpyFromSymbol(&updateListFlagHost, updateListFlag, sizeof(int));
     if (updateListFlagHost)
@@ -682,10 +682,10 @@ void iterate(Particle PT, Parameter PM)
     }
 }
 
-void forceAndPositionUpdate(Particle PT, Parameter PM)
+void forceAndPositionUpdate(Particle PT, Parameter PM, real tNow)
 {
-    initAroundNum(PT, PM);
-    getForce<<<PM.blockNum, PM.threadNum>>>(PT, PM);
+    // initAroundNum(PT, PM);
+    getForce<<<PM.blockNum, PM.threadNum>>>(PT, PM, tNow);
     cudaDeviceSynchronize();
     updatePosition<<<PM.blockNum, PM.threadNum>>>(PT, PM);
     cudaDeviceSynchronize();
@@ -696,7 +696,7 @@ void initAroundNum(Particle PT, Parameter PM)
     cudaMemset(PT.aroundNum, 0, sizeof(int) * PM.particleNum);
 }
 
-__global__ void getForce(Particle PT, Parameter PM)
+__global__ void getForce(Particle PT, Parameter PM, real tNow)
 {
     int id = blockIdx.x * blockDim.x + threadIdx.x;
     if (id >= PM.particleNum)
@@ -705,86 +705,90 @@ __global__ void getForce(Particle PT, Parameter PM)
     PT.fx[id] = 0;
     PT.fy[id] = 0;
     int i;
-    PT.aroundNum[id] = 0;
-    for (i = 0; i < PT.offsetsNL[id]; i++)
+
+    int NStep = __double2float_rd((tNow - PM.tStart) / PM.tStep);
+    // if (NStep % 1600 == 0 && PM.tStep * NStep - tNow < 1e-8)
+    if (1)
     {
-        real disp = 1;
-        // x0 = PT.x[id]<PM.boxX-disp ? PT.x[id]+disp:PT.x[id]+disp-PM.boxX;
-        x0 = PT.x[id];
-        y0 = PT.y[id];
-        // y0 = PT.y[id]<PM.boxY-disp ? PT.y[id]+disp:PT.y[id]+disp-PM.boxY;
-        x1 = PT.x[PT.NeighborList[id * PM.maxParticlePerCell + i]];
-        y1 = PT.y[PT.NeighborList[id * PM.maxParticlePerCell + i]];
-        dx = sign01(0.5 * PM.boxX - x0 + x1) * sign01(0.5 * PM.boxX + x0 - x1) * (x0 - x1) +
-             sign01(sign(x0 - x1) * (x0 - x1) - 0.5 * PM.boxX) * -sign(x0 - x1) * (PM.boxX - sign(x0 - x1) * (x0 - x1));
-        dy = sign01(0.5 * PM.boxY - y0 + y1) * sign01(0.5 * PM.boxY + y0 - y1) * (y0 - y1) +
-             sign01(sign(y0 - y1) * (y0 - y1) - 0.5 * PM.boxY) * -sign(y0 - y1) * (PM.boxY - sign(y0 - y1) * (y0 - y1));
-        dr = sqrt(dx * dx + dy * dy);
-
-        // x0 = PT.x[id]<PM.boxX-disp ? PT.x[id]+disp:PT.x[id]+disp-PM.boxX;
-        // // x0 = PT.x[id];
-        // // y0 = PT.y[id]<PM.boxY-disp ? PT.y[id]+disp:PT.y[id]+disp-PM.boxY;
-        // y0 = PT.y[id];
-        // x1 = PT.x[PT.NeighborList[id * PM.maxParticlePerCell + i]];
-        // y1 = PT.y[PT.NeighborList[id * PM.maxParticlePerCell + i]];
-        // dx = sign01(0.5 * PM.boxX - x0 + x1) * sign01(0.5 * PM.boxX + x0 - x1) * (x0 - x1) + \
-        //     sign01(sign(x0 - x1) * (x0 - x1) - 0.5 * PM.boxX) * -sign(x0 - x1) * (PM.boxX - sign(x0 - x1) * (x0 - x1));
-        // dy = sign01(0.5 * PM.boxY - y0 + y1) * sign01(0.5 * PM.boxY + y0 - y1) * (y0 - y1) + \
-        //     sign01(sign(y0 - y1) * (y0 - y1) - 0.5 * PM.boxY) * -sign(y0 - y1) * (PM.boxY - sign(y0 - y1) * (y0 - y1));
-        // real dr1 = sqrt(dx * dx + dy * dy);
-
-        // concentricCircle
-        //  x0 = PT.x[id]>disp ? PT.x[id]-disp:PT.x[id]-disp+PM.boxX;
-        //  // x0 = PT.x[id];
-        //  // y0 = PT.y[id]<PM.boxY-disp ? PT.y[id]+disp:PT.y[id]+disp-PM.boxY;
-        //  y0 = PT.y[id];
-        //  x1 = PT.x[PT.NeighborList[id * PM.maxParticlePerCell + i]];
-        //  y1 = PT.y[PT.NeighborList[id * PM.maxParticlePerCell + i]];
-        //  dx = sign01(0.5 * PM.boxX - x0 + x1) * sign01(0.5 * PM.boxX + x0 - x1) * (x0 - x1) + \
-        //      sign01(sign(x0 - x1) * (x0 - x1) - 0.5 * PM.boxX) * -sign(x0 - x1) * (PM.boxX - sign(x0 - x1) * (x0 - x1));
-        //  dy = sign01(0.5 * PM.boxY - y0 + y1) * sign01(0.5 * PM.boxY + y0 - y1) * (y0 - y1) + \
-        //      sign01(sign(y0 - y1) * (y0 - y1) - 0.5 * PM.boxY) * -sign(y0 - y1) * (PM.boxY - sign(y0 - y1) * (y0 - y1));
-        //  real dr1 = sqrt(dx * dx + dy * dy);
-
-        // TaiChi
-        // real x01 = PT.x[id]<PM.boxX-disp ? PT.x[id]+disp:PT.x[id]+disp-PM.boxX;
-        // // real y01 = PT.y[id]<PM.boxY-disp ? PT.y[id]+disp:PT.y[id]+disp-PM.boxY;
-        // real x02 = PT.x[id]<PM.boxX-2*disp ? PT.x[id]+2*disp:PT.x[id]+2*disp-PM.boxX;
-        // real dx1 = sign01(0.5 * PM.boxX - x01 + x1) * sign01(0.5 * PM.boxX + x01 - x1) * (x01 - x1) + \
-        //     sign01(sign(x01 - x1) * (x01 - x1) - 0.5 * PM.boxX) * -sign(x01 - x1) * (PM.boxX - sign(x01 - x1) * (x01 - x1));
-        // real dx2 = sign01(0.5 * PM.boxX - x02 + x1) * sign01(0.5 * PM.boxX + x02 - x1) * (x02 - x1) + \
-        //     sign01(sign(x02 - x1) * (x02 - x1) - 0.5 * PM.boxX) * -sign(x02 - x1) * (PM.boxX - sign(x02 - x1) * (x02 - x1));
-        // real dr1 = sqrt(dx1 * dx1 + dy * dy);
-        // real dr2 = sqrt(dx2 * dx2 + dy * dy);
-
-        if (dr < PM.rOff && dx > (dr * PM.visionConeXLen) && dr > PM.rOffIn)
+        PT.aroundNum[id] = 0;
+        // printf("it is okay in time: %f", tNow);
+        for (i = 0; i < PT.offsetsNL[id]; i++)
         {
-            // if((dx>-0.5 && dx<1.5 && dy>-0.5 && dy<0.5) || (dx>0.5 && dx<2.5 && dy>-1.5 && dy<-0.5)){
-            // if (dx > -1.5 && dx < 2.5 && dy > -0.5 && dy < 0.5){
-            // if(dr<1 || (dr1<2 && dr2>1 && dy>0)){
-            // if(dr>2 && dr<3){
-            // if ((dx > -2 && dx < 2 && dy > -0.5 && dy < 0.5) || (dx > -0.5 && dx < 0.5 && dy > -2 && dy < 2)){
-            // if(dr<1 || (dr>2 && dr<3)){
-            // if(dr<1 || dr1<1){
-            PT.aroundNum[id] += 1;
+            real disp = 1;
+            // x0 = PT.x[id]<PM.boxX-disp ? PT.x[id]+disp:PT.x[id]+disp-PM.boxX;
+            x0 = PT.x[id];
+            y0 = PT.y[id];
+            // y0 = PT.y[id]<PM.boxY-disp ? PT.y[id]+disp:PT.y[id]+disp-PM.boxY;
+            x1 = PT.x[PT.NeighborList[id * PM.maxParticlePerCell + i]];
+            y1 = PT.y[PT.NeighborList[id * PM.maxParticlePerCell + i]];
+            dx = sign01(0.5 * PM.boxX - x0 + x1) * sign01(0.5 * PM.boxX + x0 - x1) * (x0 - x1) +
+                 sign01(sign(x0 - x1) * (x0 - x1) - 0.5 * PM.boxX) * -sign(x0 - x1) * (PM.boxX - sign(x0 - x1) * (x0 - x1));
+            dy = sign01(0.5 * PM.boxY - y0 + y1) * sign01(0.5 * PM.boxY + y0 - y1) * (y0 - y1) +
+                 sign01(sign(y0 - y1) * (y0 - y1) - 0.5 * PM.boxY) * -sign(y0 - y1) * (PM.boxY - sign(y0 - y1) * (y0 - y1));
+            dr = sqrt(dx * dx + dy * dy);
+
+            // x0 = PT.x[id]<PM.boxX-disp ? PT.x[id]+disp:PT.x[id]+disp-PM.boxX;
+            // // x0 = PT.x[id];
+            // // y0 = PT.y[id]<PM.boxY-disp ? PT.y[id]+disp:PT.y[id]+disp-PM.boxY;
+            // y0 = PT.y[id];
+            // x1 = PT.x[PT.NeighborList[id * PM.maxParticlePerCell + i]];
+            // y1 = PT.y[PT.NeighborList[id * PM.maxParticlePerCell + i]];
+            // dx = sign01(0.5 * PM.boxX - x0 + x1) * sign01(0.5 * PM.boxX + x0 - x1) * (x0 - x1) + \
+            //     sign01(sign(x0 - x1) * (x0 - x1) - 0.5 * PM.boxX) * -sign(x0 - x1) * (PM.boxX - sign(x0 - x1) * (x0 - x1));
+            // dy = sign01(0.5 * PM.boxY - y0 + y1) * sign01(0.5 * PM.boxY + y0 - y1) * (y0 - y1) + \
+            //     sign01(sign(y0 - y1) * (y0 - y1) - 0.5 * PM.boxY) * -sign(y0 - y1) * (PM.boxY - sign(y0 - y1) * (y0 - y1));
+            // real dr1 = sqrt(dx * dx + dy * dy);
+
+            // concentricCircle
+            //  x0 = PT.x[id]>disp ? PT.x[id]-disp:PT.x[id]-disp+PM.boxX;
+            //  // x0 = PT.x[id];
+            //  // y0 = PT.y[id]<PM.boxY-disp ? PT.y[id]+disp:PT.y[id]+disp-PM.boxY;
+            //  y0 = PT.y[id];
+            //  x1 = PT.x[PT.NeighborList[id * PM.maxParticlePerCell + i]];
+            //  y1 = PT.y[PT.NeighborList[id * PM.maxParticlePerCell + i]];
+            //  dx = sign01(0.5 * PM.boxX - x0 + x1) * sign01(0.5 * PM.boxX + x0 - x1) * (x0 - x1) + \
+            //      sign01(sign(x0 - x1) * (x0 - x1) - 0.5 * PM.boxX) * -sign(x0 - x1) * (PM.boxX - sign(x0 - x1) * (x0 - x1));
+            //  dy = sign01(0.5 * PM.boxY - y0 + y1) * sign01(0.5 * PM.boxY + y0 - y1) * (y0 - y1) + \
+            //      sign01(sign(y0 - y1) * (y0 - y1) - 0.5 * PM.boxY) * -sign(y0 - y1) * (PM.boxY - sign(y0 - y1) * (y0 - y1));
+            //  real dr1 = sqrt(dx * dx + dy * dy);
+
+            // TaiChi
+            // real x01 = PT.x[id]<PM.boxX-disp ? PT.x[id]+disp:PT.x[id]+disp-PM.boxX;
+            // // real y01 = PT.y[id]<PM.boxY-disp ? PT.y[id]+disp:PT.y[id]+disp-PM.boxY;
+            // real x02 = PT.x[id]<PM.boxX-2*disp ? PT.x[id]+2*disp:PT.x[id]+2*disp-PM.boxX;
+            // real dx1 = sign01(0.5 * PM.boxX - x01 + x1) * sign01(0.5 * PM.boxX + x01 - x1) * (x01 - x1) + \
+            //     sign01(sign(x01 - x1) * (x01 - x1) - 0.5 * PM.boxX) * -sign(x01 - x1) * (PM.boxX - sign(x01 - x1) * (x01 - x1));
+            // real dx2 = sign01(0.5 * PM.boxX - x02 + x1) * sign01(0.5 * PM.boxX + x02 - x1) * (x02 - x1) + \
+            //     sign01(sign(x02 - x1) * (x02 - x1) - 0.5 * PM.boxX) * -sign(x02 - x1) * (PM.boxX - sign(x02 - x1) * (x02 - x1));
+            // real dr1 = sqrt(dx1 * dx1 + dy * dy);
+            // real dr2 = sqrt(dx2 * dx2 + dy * dy);
+            // if (__double2int_rd((tNow - PM.tStart) / PM.tExpo) % 10 == 0 && __double2float_rd((tNow - PM.tStart) /))
+            if (dr < PM.rOff && dx > (dr * PM.visionConeXLen) && dr > PM.rOffIn)
+                // if (dx > -0.05 && dx < 0.05 && dy > -0.05 && dy < 0.05)
+                // if(dr<1 || (dr1<2 && dr2>1 && dy>0)){
+                // if(dr>2 && dr<3){
+                // if((dx>-2 && dx<2 && dy>-0.5 && dy<0.5) || (dx>-0.5 && dx<0.5 && dy>-2 && dy<2)){
+                // if(dr<1 || (dr>2 && dr<3)){
+                // if(dr<1 || dr1<1){
+                PT.aroundNum[id] += 1;
+
+            f12 = 0;
+
+            if (PT.fx[id] > 10000 || PT.fx[id] < -10000 || PT.fy[id] > 10000 || PT.fy[id] < -10000)
+            {
+                break;
+            }
         }
-
-        f12 = 0;
-
-        if (PT.fx[id] > 10000 || PT.fx[id] < -10000 || PT.fy[id] > 10000 || PT.fy[id] < -10000)
+        if (PT.fx[id] > 10000 || PT.fx[id] < -10000)
         {
-            break;
+            printf("wrong!!!!!!!!!id:%d,fx:%f,fy:%f,dx:%f,dy:%f,x0:%f,x1:%f,y0:%f,y1:%f,NLFX:%d\n", id, PT.fx[id], PT.fy[id], dx, dy, x0, x1, y0, y1, PT.NeighborListFlagX[id * PM.maxParticlePerCell + i]);
+            wrongFlag = 1;
         }
-    }
-    if (PT.fx[id] > 10000 || PT.fx[id] < -10000)
-    {
-        printf("wrong!!!!!!!!!id:%d,fx:%f,fy:%f,dx:%f,dy:%f,x0:%f,x1:%f,y0:%f,y1:%f,NLFX:%d\n", id, PT.fx[id], PT.fy[id], dx, dy, x0, x1, y0, y1, PT.NeighborListFlagX[id * PM.maxParticlePerCell + i]);
-        wrongFlag = 1;
-    }
-    if (PT.fy[id] > 10000 || PT.fy[id] < -10000)
-    {
-        printf("wrong!!!!!!!!!id:%d,fx:%f,fy:%f,dx:%f,dy:%f,y0:%f,y1:%f,x0:%f,x1:%f,NLFY:%d\n", id, PT.fx[id], PT.fy[id], dx, dy, y0, y1, x0, x1, PT.NeighborListFlagY[id * PM.maxParticlePerCell + i]);
-        wrongFlag = 1;
+        if (PT.fy[id] > 10000 || PT.fy[id] < -10000)
+        {
+            printf("wrong!!!!!!!!!id:%d,fx:%f,fy:%f,dx:%f,dy:%f,y0:%f,y1:%f,x0:%f,x1:%f,NLFY:%d\n", id, PT.fx[id], PT.fy[id], dx, dy, y0, y1, x0, x1, PT.NeighborListFlagY[id * PM.maxParticlePerCell + i]);
+            wrongFlag = 1;
+        }
     }
 }
 
@@ -797,7 +801,11 @@ __device__ void updateKBT(Particle PT, Parameter PM, int id)
 {
     if (PM.kBTChangeMode == 1)
     {
+        // real temp = PT.aroundNum[id] - PM.kBTChangePM0;
+        // for (int i=0;i<9;i++)
+        //     temp=temp*(PT.aroundNum[id]-PM.kBTChangePM0);
         PT.kBT[id] = PM.kBT + PM.N * (PT.aroundNum[id] - PM.kBTChangePM0) * (PT.aroundNum[id] - PM.kBTChangePM0) / 10;
+        // PT.kBT[id] = PM.kBT + PM.N * temp * temp * temp * temp * temp * temp * temp / 10;
     }
     else if (PM.kBTChangeMode == 2)
     {
@@ -806,32 +814,6 @@ __device__ void updateKBT(Particle PT, Parameter PM, int id)
     else if (PM.kBTChangeMode == 3)
     {
         PT.kBT[id] = PM.kBT + PM.N * (sin((PT.aroundNum[id] - PM.kBTChangePM0) * Pi / 3 - Pi / 2) + 1);
-    }
-    else if (PM.kBTChangeMode == 4)
-    {
-        if (PT.aroundNum[id] < PM.kBTChangePM0)
-        {
-            PT.kBT[id] = PM.kBT + PM.N * (PT.aroundNum[id] - PM.kBTChangePM0) * (PT.aroundNum[id] - PM.kBTChangePM0) / 10;
-        }
-        else
-        {
-            PT.kBT[id] = 1;
-        }
-    }
-    else if (PM.kBTChangeMode == 5)
-    {
-        if (PT.aroundNum[id] < PM.kBTChangePM0)
-        {
-            PT.kBT[id] = 2;
-        }
-        else
-        {
-            PT.kBT[id] = 0;
-        }
-    }
-    else if (PM.kBTChangeMode == 6)
-    {
-        PT.kBT[id] = sin(PT.aroundNum[id] * Pi / 75 + Pi / 2) + 1;
     }
 }
 

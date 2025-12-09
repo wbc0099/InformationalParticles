@@ -33,7 +33,36 @@ is_gpu_free() {
 
 # 循环检测 GPU 和任务提交
 # for i in 200 500 1000 1500 2000 2500 3000; do
-for i in 12000 18000 24000 30000; do
+# for i in 12000 14000 16000 18000; do
+#     for j in 45 90 135 180; do
+#         particelNum=$(bc <<< "scale=1; $i")
+#         theta=$(bc <<< "scale=1; $j")
+
+#         while true; do
+#             available_gpus=()
+#             for gpu_id in $(nvidia-smi --query-gpu=index --format=csv,noheader,nounits); do
+#                 if is_gpu_free $gpu_id; then
+#                     available_gpus+=($gpu_id)
+#                 fi
+#             done
+
+#             if [ ${#available_gpus[@]} -gt 0 ]; then
+#                 for gpu_id in "${available_gpus[@]}"; do
+#                     echo "GPU $gpu_id is free."
+#                     submit_task $gpu_id $particelNum $theta
+#                     sleep 10  # 避免短时间重复提交
+#                     break 2  # 跳出两个循环
+#                 done
+#             else
+#                 echo "Waiting for available GPUs..."
+#                 sleep 10  # 等待间隔
+#             fi
+#         done
+#     done
+# done
+
+循环检测 GPU 和任务提交
+for i in 6000 9000 12000 15000 18000; do
     for j in 45 90 135 180; do
         particelNum=$(bc <<< "scale=1; $i")
         theta=$(bc <<< "scale=1; $j")
